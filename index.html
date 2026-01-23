@@ -3,195 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arbitrage Academy | Fragment Style</title>
+    <title>Telegram Desktop Clone</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
     <style>
         body {
-            background-color: #0f172a; /* Deep dark blue */
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
+            background-color: #afbecc;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-        .fragment-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .tg-blue { color: #3390ec; }
-        .tg-bg-blue { background-color: #3390ec; }
-        .hidden-content { display: none; }
-        
-        /* Анимация уведомлений */
-        @keyframes slideIn {
-            from { transform: translateX(-100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        .notification { animation: slideIn 0.5s ease-out; }
+        .chat-shadow { box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .my-msg { background-color: #eeffde; border-radius: 12px 12px 0 12px; }
+        .other-msg { background-color: #ffffff; border-radius: 12px 12px 12px 0; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #c2cbd2; border-radius: 10px; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="h-screen flex items-center justify-center">
 
-    <nav class="border-b border-white/10 px-6 py-4 flex justify-between items-center bg-[#0f172a]/80 sticky top-0 z-50">
-        <div class="flex items-center gap-2">
-            <div class="w-8 h-8 tg-bg-blue rounded-lg flex items-center justify-center font-bold">A</div>
-            <span class="text-xl font-bold tracking-tight">ARBITRAGE <span class="tg-blue">ACADEMY</span></span>
+    <div class="w-full max-w-[1000px] h-full md:h-[90vh] bg-white flex overflow-hidden shadow-2xl md:rounded-lg">
+        
+        <div class="w-80 border-r border-gray-200 hidden md:flex flex-col bg-white">
+            <div class="p-3 border-b flex items-center gap-3">
+                <div class="w-10 h-10 bg-[#3390ec] rounded-full flex items-center justify-center text-white font-bold text-xl">≡</div>
+                <input type="text" placeholder="Поиск" class="flex-grow bg-[#f1f1f1] rounded-full py-1.5 px-4 text-sm outline-none">
+            </div>
+            <div class="overflow-y-auto flex-grow">
+                <div class="p-3 bg-[#3390ec] text-white flex items-center gap-3 cursor-pointer">
+                    <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-xl font-bold">A</div>
+                    <div class="flex-grow">
+                        <p class="font-semibold text-sm">Арбитраж Чат 🚀</p>
+                        <p class="text-xs opacity-80">Облачное хранилище...</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="auth-section">
-            <script async src="https://telegram.org/js/telegram-widget.js?22" 
-                    data-telegram-login="ProverkaArtem228robot" 
-                    data-size="medium" 
-                    data-onauth="onTelegramAuth(user)" 
-                    data-request-access="write"></script>
-        </div>
-    </nav>
 
-    <header id="hero" class="py-20 px-4 text-center">
-        <h1 class="text-5xl md:text-6xl font-extrabold mb-6 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            Твой путь в арбитраж <br>начинается здесь
-        </h1>
-        <p class="text-gray-400 text-lg max-w-2xl mx-auto mb-10">
-            Получи доступ к закрытому мануалу по заработку на трафике. 
-            Авторизация через Telegram обязательна для защиты контента от ботов.
-        </p>
-        <div class="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full border border-blue-500/20">
-            <span class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-            </span>
-            Сейчас на сайте: 1,248 учеников
-        </div>
-    </header>
-
-    <main id="main-content" class="hidden-content container mx-auto px-4 pb-20">
-        <div class="max-w-4xl mx-auto">
+        <div class="flex-grow flex flex-col bg-[#9db1c3]/40 relative">
             
-            <div class="mb-8 fragment-card p-4 rounded-2xl">
-                <div class="flex justify-between mb-2 text-sm font-medium">
-                    <span>Твой прогресс обучения</span>
-                    <span id="progress-text" class="tg-blue">0%</span>
+            <div class="h-[56px] bg-white flex items-center px-4 justify-between border-b chat-shadow z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">A</div>
+                    <div>
+                        <p class="font-bold text-sm">Арбитраж Чат 🚀</p>
+                        <p id="status" class="text-xs text-[#3390ec]">в сети</p>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
-                    <div id="progress-bar" class="tg-bg-blue h-full transition-all duration-500" style="width: 0%"></div>
-                </div>
+                <div class="text-gray-400 cursor-pointer text-xl font-bold italic">...</div>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6">
-                <div class="md:col-span-2 space-y-6">
-                    <div class="fragment-card p-8 rounded-3xl">
-                        <h2 class="text-3xl font-bold mb-6">🚀 Мануал: С нуля до $100/день</h2>
-                        
-                        <div class="space-y-8">
-                            <section class="step" data-step="1">
-                                <h3 class="text-xl font-semibold flex items-center gap-3">
-                                    <span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm">1</span>
-                                    Выбор ниши (Вертикали)
-                                </h3>
-                                <p class="mt-3 text-gray-400 leading-relaxed">
-                                    В 2024 году самый низкий порог входа — это <strong>Nutra</strong> (товары для здоровья) и <strong>E-com</strong>. Рекомендуем партнерку <em>M1-Shop</em> или <em>Lemonad</em>.
-                                </p>
-                                <button onclick="completeStep(1, 33)" class="mt-4 text-sm tg-blue hover:underline">Отметить как прочитано</button>
-                            </section>
-
-                            <section class="step" data-step="2">
-                                <h3 class="text-xl font-semibold flex items-center gap-3">
-                                    <span class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm">2</span>
-                                    Подготовка креативов
-                                </h3>
-                                <p class="mt-3 text-gray-400 leading-relaxed">
-                                    Используй нейросети (Midjourney/DALL-E) для генерации уникальных картинок. Видео-креативы всегда дают ROI выше на 15-20%.
-                                </p>
-                                <button onclick="completeStep(2, 66)" class="mt-4 text-sm tg-blue hover:underline">Отметить как прочитано</button>
-                            </section>
-                        </div>
-                    </div>
+            <div id="messages" class="flex-grow overflow-y-auto p-4 space-y-3">
                 </div>
 
-                <div class="space-y-6">
-                    <div class="fragment-card p-6 rounded-3xl border-t-4 border-blue-500">
-                        <h4 class="font-bold mb-4">ROI Калькулятор</h4>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-xs text-gray-500">Расход ($)</label>
-                                <input type="number" id="spend" value="100" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 outline-none focus:border-blue-500 transition">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500">Доход ($)</label>
-                                <input type="number" id="revenue" value="150" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 outline-none focus:border-blue-500 transition">
-                            </div>
-                            <div class="pt-4 border-t border-white/5">
-                                <div class="flex justify-between italic">
-                                    <span class="text-gray-400">Чистая прибыль:</span>
-                                    <span id="net-profit" class="text-green-400 font-bold">+$50</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="p-3 bg-white flex items-center gap-2">
+                <div class="p-2 text-gray-400 cursor-pointer hover:bg-gray-100 rounded-full">📎</div>
+                <input id="input" type="text" placeholder="Написать сообщение..." class="flex-grow py-2 outline-none text-[15px]">
+                <button id="send" class="p-2 text-[#3390ec] hover:bg-blue-50 rounded-full transition transform active:scale-95">
+                    <svg viewBox="0 0 24 24" class="w-7 h-7 fill-current"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                </button>
             </div>
         </div>
-    </main>
-
-    <div id="notification-container" class="fixed bottom-6 left-6 z-50 pointer-events-none"></div>
+    </div>
 
     <script>
-        // Функция авторизации
-        function onTelegramAuth(user) {
-            document.getElementById('hero').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden-content');
+        // Инициализируем Gun (используем публичные узлы для связи)
+        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+        const chat = gun.get('arbitrage_chat_pro_2024');
+
+        const userAlias = "User_" + Math.floor(Math.random() * 999);
+        const input = document.getElementById('input');
+        const sendBtn = document.getElementById('send');
+        const messagesDiv = document.getElementById('messages');
+
+        // Отправка сообщения
+        function sendMessage() {
+            if (!input.value.trim()) return;
+            chat.set({
+                name: userAlias,
+                msg: input.value,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            });
+            input.value = '';
+        }
+
+        sendBtn.onclick = sendMessage;
+        input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage() };
+
+        // Слушаем новые сообщения
+        chat.map().once((data) => {
+            if (!data || !data.msg) return;
             
-            document.getElementById('auth-section').innerHTML = `
-                <div class="flex items-center gap-3 bg-white/5 p-1 pr-4 rounded-full border border-white/10">
-                    <img src="${user.photo_url || 'https://ui-avatars.com/api/?name='+user.first_name}" class="w-8 h-8 rounded-full">
-                    <span class="text-sm font-medium">${user.first_name}</span>
+            const isMine = data.name === userAlias;
+            const msgHtml = `
+                <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
+                    <div class="${isMine ? 'my-msg' : 'other-msg'} px-3 py-1.5 shadow-sm max-w-[80%] relative">
+                        ${!isMine ? `<p class="text-[12px] font-bold text-[#3390ec] mb-0.5">${data.name}</p>` : ''}
+                        <div class="flex items-end gap-2">
+                            <span class="text-[15px] leading-tight text-black">${data.msg}</span>
+                            <span class="text-[10px] text-gray-400 mb-[-2px]">${data.time}</span>
+                        </div>
+                    </div>
                 </div>
             `;
-            showNotification(`Добро пожаловать, ${user.first_name}! Access Granted.`);
-        }
-
-        // Логика прогресс-бара
-        function completeStep(stepId, percent) {
-            document.getElementById('progress-bar').style.width = percent + '%';
-            document.getElementById('progress-text').innerText = percent + '%';
-            const stepBtn = document.querySelector(`[data-step="${stepId}"] button`);
-            stepBtn.innerText = '✅ Выполнено';
-            stepBtn.disabled = true;
-            stepBtn.classList.add('text-green-400');
-        }
-
-        // Логика калькулятора
-        const spendInput = document.getElementById('spend');
-        const revInput = document.getElementById('revenue');
-        const netResult = document.getElementById('net-profit');
-
-        function updateCalc() {
-            const diff = revInput.value - spendInput.value;
-            netResult.innerText = (diff >= 0 ? '+$' : '-$') + Math.abs(diff);
-            netResult.className = diff >= 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
-        }
-        spendInput.addEventListener('input', updateCalc);
-        revInput.addEventListener('input', updateCalc);
-
-        // Функция всплывающих уведомлений (имитация жизни)
-        function showNotification(text) {
-            const container = document.getElementById('notification-container');
-            const el = document.createElement('div');
-            el.className = 'notification fragment-card px-4 py-3 rounded-xl mb-3 text-xs border-l-4 border-blue-500 shadow-2xl';
-            el.innerHTML = `💎 ${text}`;
-            container.appendChild(el);
-            setTimeout(() => el.remove(), 4000);
-        }
-
-        // Генерация случайных уведомлений о "профите"
-        const names = ['Артем', 'Dmitry', 'Marat', 'Admin_Arbitrage', 'User_77', 'Ksenia'];
-        const amounts = [120, 45, 300, 89, 550, 210];
-        
-        setInterval(() => {
-            if (Math.random() > 0.7) {
-                const name = names[Math.floor(Math.random() * names.length)];
-                const cash = amounts[Math.floor(Math.random() * amounts.length)];
-                showNotification(`Ученик <b>${name}</b> вывел профит <b>$${cash}</b>`);
-            }
-        }, 5000);
+            messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
     </script>
 </body>
 </html>
