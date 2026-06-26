@@ -3,110 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Desktop Clone</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <title>Cyber-Guild Manager [P2P]</title>
     <style>
-        body {
-            background-color: #afbecc;
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        :root {
+            --bg: #0a0b10;
+            --panel: #121420;
+            --accent: #00ffcc;
+            --text: #ffffff;
+            --text-dim: #626880;
+            --border: 1px solid rgba(0, 255, 204, 0.2);
         }
-        .chat-shadow { box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        .my-msg { background-color: #eeffde; border-radius: 12px 12px 0 12px; }
-        .other-msg { background-color: #ffffff; border-radius: 12px 12px 12px 0; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #c2cbd2; border-radius: 10px; }
+        body {
+            margin: 0; padding: 10px; font-family: 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;
+        }
+        h1, h2, h3 { margin: 5px 0; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* СЕТЕВАЯ ПАНЕЛЬ */
+        #network-panel {
+            background: var(--panel); border: var(--border); padding: 15px; border-radius: 8px; margin-bottom: 10px;
+        }
+        .net-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        textarea { background: #000; color: #fff; border: 1px solid #333; padding: 5px; font-size: 10px; resize: none; border-radius: 4px; }
+        button {
+            background: linear-gradient(135deg, #00ffcc, #0099ff); border: none; color: #000;
+            padding: 8px 15px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+        }
+        button:active { filter: brightness(1.2); }
+
+        /* ИГРОВОЙ ИНТЕРФЕЙС */
+        #game-interface { display: none; flex-grow: 1; grid-template-rows: auto 1fr auto; gap: 10px; overflow: hidden; }
+        
+        .stats-bar { display: flex; justify-content: space-around; background: var(--panel); padding: 10px; border-radius: 8px; border: var(--border); font-size: 18px; font-weight: bold; }
+        
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: hidden; }
+        @media (max-width: 600px) { .main-content { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
+
+        .panel-box { background: var(--panel); border: var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; overflow: hidden; }
+        .scroll-list { flex-grow: 1; overflow-y: auto; margin-bottom: 5px; padding-right: 5px; }
+
+        /* ЭЛЕМЕНТЫ ИГРЫ */
+        .farm-btn { background: linear-gradient(135deg, #ff0055, #9900cc); color: #fff; width: 100%; padding: 15px; font-size: 18px; margin-bottom: 15px; border-radius: 6px; }
+        .upg-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 8px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .upg-info span { display: block; font-size: 11px; color: var(--text-dim); }
+
+        /* ЧАТ */
+        .chat-msg { font-size: 13px; margin-bottom: 4px; line-height: 1.4; }
+        .chat-msg b { color: var(--accent); }
+        .chat-input-row { display: flex; gap: 5px; }
+        .chat-input-row input { flex-grow: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 4px; }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center">
+<body>
 
-    <div class="w-full max-w-[1000px] h-full md:h-[90vh] bg-white flex overflow-hidden shadow-2xl md:rounded-lg">
+    <!-- СЕТЕВАЯ ПАНЕЛЬ (Вход/Создание клана) -->
+    <div id="network-panel">
+        <h2>⚔️ Вход в Кибер-Клан</h2>
+        <p style="font-size:12px; color:var(--text-dim); margin:0 0 10px 0;">Связь P2P без серверов. Обменяйтесь ключами с другом.</p>
         
-        <div class="w-80 border-r border-gray-200 hidden md:flex flex-col bg-white">
-            <div class="p-3 border-b flex items-center gap-3">
-                <div class="w-10 h-10 bg-[#3390ec] rounded-full flex items-center justify-center text-white font-bold text-xl">≡</div>
-                <input type="text" placeholder="Поиск" class="flex-grow bg-[#f1f1f1] rounded-full py-1.5 px-4 text-sm outline-none">
-            </div>
-            <div class="overflow-y-auto flex-grow">
-                <div class="p-3 bg-[#3390ec] text-white flex items-center gap-3 cursor-pointer">
-                    <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-xl font-bold">A</div>
-                    <div class="flex-grow">
-                        <p class="font-semibold text-sm">Арбитраж Чат 🚀</p>
-                        <p class="text-xs opacity-80">Облачное хранилище...</p>
-                    </div>
-                </div>
-            </div>
+        <div id="step-1">
+            <button id="btn-create">1. Создать новый Клан (Хост)</button>
+            <button id="btn-join-mode" style="background: #222; color: #fff;">Войти в Клан друга</button>
         </div>
 
-        <div class="flex-grow flex flex-col bg-[#9db1c3]/40 relative">
-            
-            <div class="h-[56px] bg-white flex items-center px-4 justify-between border-b chat-shadow z-10">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">A</div>
-                    <div>
-                        <p class="font-bold text-sm">Арбитраж Чат 🚀</p>
-                        <p id="status" class="text-xs text-[#3390ec]">в сети</p>
-                    </div>
+        <div id="net-controls" style="display: none; margin-top:10px;">
+            <div class="net-row">
+                <span id="key-label">Твой Ключ (скопируй и отправь другу):</span>
+                <textarea id="local-offer" rows="3" readonly placeholder="Генерация ключа..."></textarea>
+                <button id="btn-copy" style="padding:4px; font-size:11px;">Скопировать ключ</button>
+            </div>
+            <div class="net-row">
+                <span>Вставь Ключ от друга:</span>
+                <textarea id="remote-answer" rows="3" placeholder="Вставь ключ сюда..."></textarea>
+                <button id="btn-connect">Подключиться к другу</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ИГРОВОЙ ИНТЕРФЕЙС (Скрыт до подключения) -->
+    <div id="game-interface">
+        <!-- Ресурсы -->
+        <div class="stats-bar">
+            <div>💾 Данные Клана: <span id="res-data">0</span></div>
+            <div>👥 Лейтенантов: <span id="peer-status">1/2</span></div>
+        </div>
+
+        <!-- Геймплей и Чат -->
+        <div class="main-content">
+            <!-- Левая часть: Фарм и Наемники -->
+            <div class="panel-box">
+                <h3>Управление рейдами</h3>
+                <button class="farm-btn" id="btn-farm">⚡ Взломать Сеть (+1 Данные)</button>
+                
+                <div class="scroll-list" id="upgrades-list">
+                    <!-- Сюда JS добавит апгрейды -->
                 </div>
-                <div class="text-gray-400 cursor-pointer text-xl font-bold italic">...</div>
             </div>
 
-            <div id="messages" class="flex-grow overflow-y-auto p-4 space-y-3">
+            <!-- Правая часть: Чат клана -->
+            <div class="panel-box">
+                <h3>📋 Чат и Логи Клана</h3>
+                <div class="scroll-list" id="chat-box">
+                    <div class="chat-msg" style="color:var(--text-dim)">Система: Ожидание приказов...</div>
                 </div>
-
-            <div class="p-3 bg-white flex items-center gap-2">
-                <div class="p-2 text-gray-400 cursor-pointer hover:bg-gray-100 rounded-full">📎</div>
-                <input id="input" type="text" placeholder="Написать сообщение..." class="flex-grow py-2 outline-none text-[15px]">
-                <button id="send" class="p-2 text-[#3390ec] hover:bg-blue-50 rounded-full transition transform active:scale-95">
-                    <svg viewBox="0 0 24 24" class="w-7 h-7 fill-current"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
-                </button>
+                <div class="chat-input-row">
+                    <input type="text" id="chat-input" placeholder="Сообщение клану..." maxlength="100">
+                    <button id="btn-send">Отправить</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Инициализируем Gun (используем публичные узлы для связи)
-        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
-        const chat = gun.get('arbitrage_chat_pro_2024');
+        // --- СОСТОЯНИЕ ИГРЫ (ОБЩЕЕ ДЛЯ ОБОИХ ИГРОКОВ) ---
+        let gameState = {
+            dataScore: 0,
+            upgrades: {
+                hacker: { name: "Младший Хакер", cost: 10, count: 0, dps: 0.5 },
+                ai_bot: { name: "Боевой ИИ-Скрипт", cost: 50, count: 0, dps: 3 },
+                server: { name: "Мейнфрейм Корпорации", cost: 250, count: 0, dps: 15 }
+            }
+        };
 
-        const userAlias = "User_" + Math.floor(Math.random() * 999);
-        const input = document.getElementById('input');
-        const sendBtn = document.getElementById('send');
-        const messagesDiv = document.getElementById('messages');
+        let myRole = "Игрок"; 
 
-        // Отправка сообщения
-        function sendMessage() {
-            if (!input.value.trim()) return;
-            chat.set({
-                name: userAlias,
-                msg: input.value,
-                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-            });
-            input.value = '';
+        // --- КОНФИГУРАЦИЯ СЕТИ P2P (WebRTC) ---
+        let localConnection;
+        let dataChannel;
+        // Публичные сервера Google, просто чтобы помочь браузерам пробить NAT домашнего роутера (Signaling)
+        const config = { iceServers: [{ urls: "stun:stun.l.google.com:19002" }] };
+
+        const netPanel = document.getElementById('network-panel');
+        const gameInterface = document.getElementById('game-interface');
+        const localOfferTex = document.getElementById('local-offer');
+        const remoteAnswerTex = document.getElementById('remote-answer');
+
+        // Инициализация WebRTC Хоста (Создатель)
+        document.getElementById('btn-create').addEventListener('click', () => {
+            myRole = "Хост (Лидер)";
+            document.getElementById('step-1').style.display = 'none';
+            document.getElementById('net-controls').style.display = 'block';
+            
+            localConnection = new RTCPeerConnection(config);
+            dataChannel = localConnection.createDataChannel("gameChannel");
+            setupDataChannel(dataChannel);
+
+            localConnection.onicecandidate = e => {
+                if (!e.candidate) {
+                    // Когда сборщик ключа закончил работу, кодируем всё в Base64 для удобства копирования
+                    localOfferTex.value = btoa(JSON.stringify(localConnection.localDescription));
+                }
+            };
+
+            localConnection.createOffer()
+                .then(offer => localConnection.setLocalDescription(offer));
+        });
+
+        // Инициализация WebRTC Клиента (Тот, кто входит)
+        document.getElementById('btn-join-mode').addEventListener('click', () => {
+            myRole = "Пир (Офицер)";
+            document.getElementById('step-1').style.display = 'none';
+            document.getElementById('net-controls').style.display = 'block';
+            document.getElementById('key-label').innerText = "Твой Ответный Ключ (отдай Хосту):";
+            document.getElementById('btn-connect').innerText = "2. Сгенерировать ответный ключ";
+
+            localConnection = new RTCPeerConnection(config);
+            
+            localConnection.ondatachannel = e => {
+                dataChannel = e.channel;
+                setupDataChannel(dataChannel);
+            };
+
+            localConnection.onicecandidate = e => {
+                if (!e.candidate) {
+                    localOfferTex.value = btoa(JSON.stringify(localConnection.localDescription));
+                }
+            };
+        });
+
+        // Кнопка обработки ключей
+        document.getElementById('btn-connect').addEventListener('click', () => {
+            const rawKey = remoteAnswerTex.value.trim();
+            if(!rawKey) return alert("Вставь ключ!");
+
+            const parsedDesc = new RTCSessionDescription(JSON.parse(atob(rawKey)));
+
+            if (myRole.includes("Офицер") && !localConnection.remoteDescription) {
+                // Шаг клиента: принял оффер лидера, создал свой ответ
+                localConnection.setRemoteDescription(parsedDesc)
+                    .then(() => localConnection.createAnswer())
+                    .then(answer => localConnection.setLocalDescription(answer));
+            } else {
+                // Шаг хоста: принял ответ от клиента
+                localConnection.setRemoteDescription(parsedDesc);
+            }
+        });
+
+        // Настройка канала связи
+        function setupDataChannel(channel) {
+            channel.onopen = () => {
+                netPanel.style.display = 'none';
+                gameInterface.style.display = 'grid';
+                document.getElementById('peer-status').innerText = "2/2 (В сети)";
+                addChatMessage("Система", `Связь установлена! Ты зашел как ${myRole}`, true);
+                renderUpgrades();
+                // Запуск пассивного дохода
+                setInterval(gameLoop, 200);
+            };
+
+            channel.onmessage = e => {
+                const packet = JSON.parse(e.data);
+                if (packet.type === "sync") {
+                    gameState = packet.state;
+                    updateUI();
+                } else if (packet.type === "chat") {
+                    addChatMessage(packet.sender, packet.msg);
+                }
+            };
         }
 
-        sendBtn.onclick = sendMessage;
-        input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage() };
+        // Функция отправки обновлений другу
+        function sendSync() {
+            if (dataChannel && dataChannel.readyState === "open") {
+                dataChannel.send(JSON.stringify({ type: "sync", state: gameState }));
+            }
+        }
 
-        // Слушаем новые сообщения
-        chat.map().once((data) => {
-            if (!data || !data.msg) return;
-            
-            const isMine = data.name === userAlias;
-            const msgHtml = `
-                <div class="flex ${isMine ? 'justify-end' : 'justify-start'}">
-                    <div class="${isMine ? 'my-msg' : 'other-msg'} px-3 py-1.5 shadow-sm max-w-[80%] relative">
-                        ${!isMine ? `<p class="text-[12px] font-bold text-[#3390ec] mb-0.5">${data.name}</p>` : ''}
-                        <div class="flex items-end gap-2">
-                            <span class="text-[15px] leading-tight text-black">${data.msg}</span>
-                            <span class="text-[10px] text-gray-400 mb-[-2px]">${data.time}</span>
-                        </div>
+        // --- ГЕЙМПЛЕЙНАЯ ЛОГИКА ---
+        document.getElementById('btn-farm').addEventListener('click', () => {
+            gameState.dataScore += 1;
+            updateUI();
+            sendSync();
+        });
+
+        function gameLoop() {
+            // Вычисляем пассивный доход в сек
+            let dps = 0;
+            for (let id in gameState.upgrades) {
+                dps += gameState.upgrades[id].count * gameState.upgrades[id].dps;
+            }
+            if (dps > 0) {
+                gameState.dataScore += dps * 0.2; // Клок тикает раз в 200мс
+                updateUI();
+                // Хост отвечает за глобальную синхронизацию времени
+                if(myRole.includes("Лидер")) sendSync();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('res-data').innerText = Math.floor(gameState.dataScore);
+            for (let id in gameState.upgrades) {
+                const card = document.getElementById(`upg-${id}`);
+                if (card) {
+                    card.querySelector('.upg-count').innerText = `${gameState.upgrades[id].count} шт.`;
+                    card.querySelector('.btn-buy').innerText = `${Math.floor(gameState.upgrades[id].cost)} 💾`;
+                    // Проверка доступности цены
+                    card.querySelector('.btn-buy').disabled = gameState.dataScore < gameState.upgrades[id].cost;
+                }
+            }
+        }
+
+        function renderUpgrades() {
+            const container = document.getElementById('upgrades-list');
+            container.innerHTML = "";
+            for (let id in gameState.upgrades) {
+                const upg = gameState.upgrades[id];
+                const div = document.createElement('div');
+                div.className = 'upg-item';
+                div.id = `upg-${id}`;
+                div.innerHTML = `
+                    <div class="upg-info">
+                        <b>${upg.name}</b>
+                        <span>Доход: +${upg.dps}/сек | <b class="upg-count">0 шт.</b></span>
                     </div>
-                </div>
-            `;
-            messagesDiv.insertAdjacentHTML('beforeend', msgHtml);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    <button class="btn-buy" onclick="buyUpgrade('${id}')">${upg.cost} 💾</button>
+                `;
+                container.appendChild(div);
+            }
+            updateUI();
+        }
+
+        window.buyUpgrade = function(id) {
+            const upg = gameState.upgrades[id];
+            if (gameState.dataScore >= upg.cost) {
+                gameState.dataScore -= upg.cost;
+                upg.count++;
+                upg.cost *= 1.4; // Каждая покупка дороже
+                addChatMessage("Лог Клана", `Куплен контракт: ${upg.name}`, true);
+                updateUI();
+                renderUpgrades();
+                sendSync();
+            }
+        };
+
+        // --- ЛОГИКА ЧАТА ---
+        const chatInput = document.getElementById('chat-input');
+        const chatBox = document.getElementById('chat-box');
+
+        function sendMsg() {
+            const text = chatInput.value.trim();
+            if(!text) return;
+            
+            addChatMessage(myRole, text);
+            if (dataChannel && dataChannel.readyState === "open") {
+                dataChannel.send(JSON.stringify({ type: "chat", sender: myRole, msg: text }));
+            }
+            chatInput.value = "";
+        }
+
+        document.getElementById('btn-send').addEventListener('click', sendMsg);
+        chatInput.addEventListener('keypress', e => { if(e.key === 'Enter') sendMsg(); });
+
+        function addChatMessage(sender, msg, isSystem = false) {
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            if(isSystem) {
+                div.innerHTML = `<i style="color:#ffaa00;">[${sender}]: ${msg}</i>`;
+            } else {
+                div.innerHTML = `<b>[${sender}]:</b> ${msg}`;
+            }
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Вспомогательная кнопка копирования
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            localOfferTex.select();
+            document.execCommand('copy');
+            alert('Ключ скопирован! Отправь его другу.');
         });
     </script>
 </body>
