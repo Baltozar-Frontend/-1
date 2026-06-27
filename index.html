@@ -44,7 +44,7 @@
         .chat-msg { font-size: 13px; margin-bottom: 4px; }
         .chat-msg b { color: var(--accent); }
     </style>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -84,20 +84,30 @@
     </div>
 
     <script>
-        // === ТВОИ ПРОПИСАННЫЕ КЛЮЧИ ===
         const SUPABASE_URL = "https://cbivrlziqtenfhrtxism.supabase.co";
         const SUPABASE_KEY = "sb_publishable_fe0ZmhwRL_K3vIVuvtZdtA_TdyUDOvm";
         
-        let supabase;
-        
-        // Безопасное создание клиента базы данных
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch(e) {
-            alert("Ошибка загрузки Supabase: " + e.message);
+        let supabaseClient = null;
+
+        // Инициализация с жесткой проверкой наличия библиотеки в глобальной видимости window
+        function getSupabase() {
+            if (supabaseClient) return supabaseClient;
+            
+            const lib = window.supabase || (window.supabaseJS ? window.supabaseJS : null);
+            if (!lib) {
+                alert("Критическая ошибка: Скрипт Supabase не загрузился в браузере мобильного! Проверь интернет или обнови страницу.");
+                return null;
+            }
+            
+            try {
+                supabaseClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+                return supabaseClient;
+            } catch(e) {
+                alert("Ошибка создания клиента базы данных: " + e.message);
+                return null;
+            }
         }
 
-        // === СОСТОЯНИЕ ИГРЫ ===
         let clanId = null;
         let myName = "Игрок_" + Math.floor(Math.random()*9000);
         let gameState = { score: 0, upgrades: { hacker: 0, bot: 0 } };
@@ -110,12 +120,18 @@
 
         // Кнопка: Создать Клан
         document.getElementById('btn-create').addEventListener('click', async () => {
+            // Тестовый алерт, чтобы сразу проверить, работает ли сама кнопка на телефоне
+            alert("Запрос отправлен в базу данных... Ожидайте ответа.");
+            
+            const client = getSupabase();
+            if (!client) return;
+
             try {
                 clanId = "clan_" + Math.floor(Math.random() * 8999 + 1000);
                 gameState = { score: 0, upgrades: { hacker: 0, bot: 0 } };
                 chatLogs = [{ sender: "Система", msg: `${myName} создал клан!` }];
 
-                const { data, error } = await supabase.from('cyber_clans').insert([{ 
+                const { data, error } = await client.from('cyber_clans').insert([{ 
                     id: clanId, score: 0, upgrades: gameState.upgrades, chat_logs: chatLogs 
                 }]);
 
@@ -123,17 +139,20 @@
 
                 startGame();
             } catch (err) {
-                alert("Ошибка базы данных: " + err.message + "\n\nЕсли пишет 'relation does not exist', значит таблица в Supabase ещё не создалась. Проверь, нажал ли ты кнопку RUN.");
+                alert("Ошибка базы данных: " + err.message + "\n\nПроверь, работает ли интернет и создана ли таблица cyber_clans в дашборде Supabase.");
             }
         });
 
         // Кнопка: Войти в Клан
         document.getElementById('btn-join').addEventListener('click', async () => {
+            const client = getSupabase();
+            if (!client) return;
+
             try {
                 const inputId = document.getElementById('clan-id-input').value.trim();
                 if(!inputId) return alert("Введите ID!");
 
-                const { data, error } = await supabase.from('cyber_clans').select('*').eq('id', inputId).single();
+                const { data, error } = await client.from('cyber_clans').select('*').eq('id', inputId).single();
                 
                 if(error || !data) return alert("Клан не найден! Проверь правильность ID.");
 
@@ -158,12 +177,10 @@
             renderUpgrades();
             renderChat();
             
-            // Запуск таймеров синхронизации
             setInterval(syncWithCloud, 2000);
             setInterval(localTick, 250);
         }
 
-        // Логика клика
         document.getElementById('btn-farm').addEventListener('click', () => {
             gameState.score += 1;
             updateUI();
@@ -221,7 +238,6 @@
             }
         }
 
-        // Отправка сообщений
         document.getElementById('btn-send').addEventListener('click', async () => {
             const inp = document.getElementById('chat-input');
             if(!inp.value.trim()) return;
@@ -244,9 +260,10 @@
         }
 
         async function saveToCloud() {
-            if(!clanId) return;
+            const client = getSupabase();
+            if(!clanId || !client) return;
             try {
-                await supabase.from('cyber_clans').update({
+                await client.from('cyber_clans').update({
                     score: gameState.score,
                     upgrades: gameState.upgrades,
                     chat_logs: chatLogs,
@@ -256,9 +273,10 @@
         }
 
         async function syncWithCloud() {
-            if(!clanId) return;
+            const client = getSupabase();
+            if(!clanId || !client) return;
             try {
-                const { data, error } = await supabase.from('cyber_clans').select('*').eq('id', clanId).single();
+                const { data, error } = await client.from('cyber_clans').select('*').eq('id', clanId).single();
                 if(data && !error) {
                     if(Number(data.score) > gameState.score) gameState.score = Number(data.score);
                     gameState.upgrades = data.upgrades;
