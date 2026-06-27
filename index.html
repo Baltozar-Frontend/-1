@@ -44,7 +44,7 @@
         .chat-msg { font-size: 13px; margin-bottom: 4px; }
         .chat-msg b { color: var(--accent); }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -84,10 +84,18 @@
     </div>
 
     <script>
-        // === НАСТРОЙКИ СВЯЗИ С SUPABASE (УЖЕ ЗАПОЛНЕНЫ) ===
+        // === ТВОИ ПРОПИСАННЫЕ КЛЮЧИ ===
         const SUPABASE_URL = "https://cbivrlziqtenfhrtxism.supabase.co";
         const SUPABASE_KEY = "sb_publishable_fe0ZmhwRL_K3vIVuvtZdtA_TdyUDOvm";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let supabase;
+        
+        // Безопасное создание клиента базы данных
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) {
+            alert("Ошибка загрузки Supabase: " + e.message);
+        }
 
         // === СОСТОЯНИЕ ИГРЫ ===
         let clanId = null;
@@ -102,34 +110,44 @@
 
         // Кнопка: Создать Клан
         document.getElementById('btn-create').addEventListener('click', async () => {
-            clanId = "clan_" + Math.floor(Math.random() * 8999 + 1000);
-            gameState = { score: 0, upgrades: { hacker: 0, bot: 0 } };
-            chatLogs = [{ sender: "Система", msg: `${myName} создал клан!` }];
+            try {
+                clanId = "clan_" + Math.floor(Math.random() * 8999 + 1000);
+                gameState = { score: 0, upgrades: { hacker: 0, bot: 0 } };
+                chatLogs = [{ sender: "Система", msg: `${myName} создал клан!` }];
 
-            await supabase.from('cyber_clans').insert([{ 
-                id: clanId, score: 0, upgrades: gameState.upgrades, chat_logs: chatLogs 
-            }]);
+                const { data, error } = await supabase.from('cyber_clans').insert([{ 
+                    id: clanId, score: 0, upgrades: gameState.upgrades, chat_logs: chatLogs 
+                }]);
 
-            startGame();
+                if (error) throw new Error(error.message);
+
+                startGame();
+            } catch (err) {
+                alert("Ошибка базы данных: " + err.message + "\n\nЕсли пишет 'relation does not exist', значит таблица в Supabase ещё не создалась. Проверь, нажал ли ты кнопку RUN.");
+            }
         });
 
         // Кнопка: Войти в Клан
         document.getElementById('btn-join').addEventListener('click', async () => {
-            const inputId = document.getElementById('clan-id-input').value.trim();
-            if(!inputId) return alert("Введите ID!");
+            try {
+                const inputId = document.getElementById('clan-id-input').value.trim();
+                if(!inputId) return alert("Введите ID!");
 
-            const { data, error } = await supabase.from('cyber_clans').select('*').eq('id', inputId).single();
-            
-            if(error || !data) return alert("Клан не найден!");
+                const { data, error } = await supabase.from('cyber_clans').select('*').eq('id', inputId).single();
+                
+                if(error || !data) return alert("Клан не найден! Проверь правильность ID.");
 
-            clanId = inputId;
-            gameState.score = Number(data.score);
-            gameState.upgrades = data.upgrades;
-            chatLogs = data.chat_logs || [];
+                clanId = inputId;
+                gameState.score = Number(data.score);
+                gameState.upgrades = data.upgrades;
+                chatLogs = data.chat_logs || [];
 
-            chatLogs.push({ sender: "Система", msg: `${myName} зашел в сеть клана!` });
-            await saveToCloud();
-            startGame();
+                chatLogs.push({ sender: "Система", msg: `${myName} зашел в сеть клана!` });
+                await saveToCloud();
+                startGame();
+            } catch(err) {
+                alert("Ошибка входа: " + err.message);
+            }
         });
 
         function startGame() {
@@ -138,14 +156,14 @@
             document.getElementById('clan-id-display').innerText = clanId;
             
             renderUpgrades();
+            renderChat();
             
-            // Начинаем бесконечный цикл синхронизации с облаком (раз в 2 секунды)
+            // Запуск таймеров синхронизации
             setInterval(syncWithCloud, 2000);
-            // Пассивный локальный тик для плавности цифр
             setInterval(localTick, 250);
         }
 
-        // Клик сбора данных
+        // Логика клика
         document.getElementById('btn-farm').addEventListener('click', () => {
             gameState.score += 1;
             updateUI();
@@ -199,11 +217,11 @@
                 chatLogs.push({ sender: "Лог", msg: `${myName} нанял ${upgConfig[id].name}` });
                 updateUI();
                 renderUpgrades();
-                saveToCloud(); // Сразу отправляем покупку в облако
+                saveToCloud();
             }
         }
 
-        // Логика чата
+        // Отправка сообщений
         document.getElementById('btn-send').addEventListener('click', async () => {
             const inp = document.getElementById('chat-input');
             if(!inp.value.trim()) return;
@@ -225,31 +243,31 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // Облачные функции сохранения и загрузки
         async function saveToCloud() {
             if(!clanId) return;
-            await supabase.from('cyber_clans').update({
-                score: gameState.score,
-                upgrades: gameState.upgrades,
-                chat_logs: chatLogs,
-                updated_at: new Date()
-            }).eq('id', clanId);
+            try {
+                await supabase.from('cyber_clans').update({
+                    score: gameState.score,
+                    upgrades: gameState.upgrades,
+                    chat_logs: chatLogs,
+                    updated_at: new Date()
+                }).eq('id', clanId);
+            } catch(e) {}
         }
 
         async function syncWithCloud() {
             if(!clanId) return;
-            // Каждые 2 секунды вытягиваем свежие данные, которые мог изменить друг
-            const { data } = await supabase.from('cyber_clans').select('*').eq('id', clanId).single();
-            if(data) {
-                // Если облачный счет больше (друг накликал), берем его. Заодно синхроним чат и апгрейды
-                if(Number(data.score) > gameState.score) gameState.score = Number(data.score);
-                gameState.upgrades = data.upgrades;
-                chatLogs = data.chat_logs || [];
-                renderChat();
-                updateUI();
-            }
-            // Отправляем свои накопленные данные обратно
-            await saveToCloud();
+            try {
+                const { data, error } = await supabase.from('cyber_clans').select('*').eq('id', clanId).single();
+                if(data && !error) {
+                    if(Number(data.score) > gameState.score) gameState.score = Number(data.score);
+                    gameState.upgrades = data.upgrades;
+                    chatLogs = data.chat_logs || [];
+                    renderChat();
+                    updateUI();
+                }
+                await saveToCloud();
+            } catch(e) {}
         }
     </script>
 </body>
