@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber-Guild Manager [Supabase Realtime]</title>
+    <title>CyberMesh // Global Chat</title>
     <style>
         :root {
             --bg: #0a0b10;
@@ -17,241 +17,145 @@
             background: var(--bg); color: var(--text);
             display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;
         }
-        h2, h3 { margin: 5px 0; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
-        #network-panel { background: var(--panel); border: var(--border); padding: 15px; border-radius: 8px; margin-bottom: 10px; }
-        .net-row { display: flex; gap: 8px; margin-top: 10px; }
-        input[type="text"] { background: #000; color: #fff; border: 1px solid #333; padding: 8px; border-radius: 4px; flex-grow: 1; }
+        .container {
+            display: flex; flex-direction: column; background: var(--panel);
+            border: var(--border); border-radius: 12px; flex-grow: 1; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.05);
+        }
+        .header {
+            padding: 15px; border-bottom: var(--border); background: rgba(0,0,0,0.2);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        h2 { margin: 0; color: var(--accent); text-transform: uppercase; font-size: 18px; letter-spacing: 1px; }
+        .user-tag { font-size: 12px; color: #626880; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; }
+        .user-tag b { color: var(--accent); }
+
+        .chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        
+        .msg { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; max-width: 85%; width: fit-content; }
+        .msg.my-msg { background: rgba(0, 255, 204, 0.05); border-color: rgba(0, 255, 204, 0.2); align-self: flex-end; }
+        .msg-meta { font-size: 11px; color: #626880; margin-bottom: 4px; display: flex; gap: 8px; }
+        .msg-meta b { color: var(--accent); }
+        .msg-text { font-size: 14px; line-height: 1.4; word-break: break-word; }
+
+        .input-area { padding: 12px; border-top: var(--border); display: flex; gap: 8px; background: rgba(0,0,0,0.2); }
+        input[type="text"] {
+            background: #000; color: #fff; border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px; border-radius: 6px; flex-grow: 1; font-size: 14px; outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--accent); }
         button {
             background: linear-gradient(135deg, #00ffcc, #0099ff); border: none; color: #000;
-            padding: 8px 15px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+            padding: 0 20px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase; font-size: 13px;
         }
-        button:disabled { opacity: 0.3; cursor: not-allowed; }
-        #game-interface { display: none; flex-grow: 1; grid-template-rows: auto 1fr; gap: 10px; overflow: hidden; }
-        .stats-bar { display: flex; justify-content: space-around; background: var(--panel); padding: 10px; border-radius: 8px; border: var(--border); font-size: 18px; font-weight: bold; }
-        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow: hidden; }
-        @media (max-width: 600px) { .main-content { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
-        .panel-box { background: var(--panel); border: var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; overflow: hidden; }
-        .scroll-list { flex-grow: 1; overflow-y: auto; margin-bottom: 5px; padding-right: 5px; }
-        .farm-btn { background: linear-gradient(135deg, #ff0055, #9900cc); color: #fff; width: 100%; padding: 15px; font-size: 18px; margin-bottom: 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold;}
-        .upg-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 8px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
-        .chat-msg { font-size: 13px; margin-bottom: 4px; }
-        .chat-msg b { color: var(--accent); }
+        button:active { opacity: 0.8; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 
-    <div id="network-panel">
-        <h2>⚔️ Вход в Кибер-Клан</h2>
-        <div id="setup-step">
-            <button id="btn-create">Создать новый Клан</button>
-            <div class="net-row">
-                <input type="text" id="clan-id-input" placeholder="Введите ID Клана...">
-                <button id="btn-join">Войти</button>
-            </div>
+    <div class="container">
+        <div class="header">
+            <h2>🌐 CYBERMESH // GLOBAL CHAT</h2>
+            <div class="user-tag">Твой профиль: <b id="profile-name">...</b></div>
         </div>
-    </div>
 
-    <div id="game-interface">
-        <div class="stats-bar">
-            <div>ID Клана: <span id="clan-id-display" style="color:var(--accent)">-</span></div>
-            <div>💾 Данные: <span id="res-data">0</span></div>
-        </div>
-        <div class="main-content">
-            <div class="panel-box">
-                <h3>Управление рейдами</h3>
-                <button class="farm-btn" id="btn-farm">⚡ Взломать Сеть (+1)</button>
-                <div class="scroll-list" id="upgrades-list"></div>
+        <div class="chat-box" id="chat-box">
             </div>
-            <div class="panel-box">
-                <h3>📋 Чат Клана</h3>
-                <div class="scroll-list" id="chat-box"></div>
-                <div class="net-row">
-                    <input type="text" id="chat-input" placeholder="Сообщение..." maxlength="100">
-                    <button id="btn-send">Отправить</button>
-                </div>
-            </div>
+
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Введите сообщение в сеть..." maxlength="250">
+            <button id="send-btn">Отправить</button>
         </div>
     </div>
 
     <script>
+        // Подключение к твоей базе Supabase
         const SUPABASE_URL = "https://cbivrlziqtenfhrtxism.supabase.co";
         const SUPABASE_KEY = "sb_publishable_fe0ZmhwRL_K3vIVuvtZdtA_TdyUDOvm";
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let myName = localStorage.getItem('cyber_player_name') || "Игрок_" + Math.floor(Math.random()*9000);
-        localStorage.setItem('cyber_player_name', myName);
-
-        let clanId = null;
-        let gameState = { score: 0, upgrades: { hacker: 0, bot: 0 } };
-        let chatLogs = [];
-
-        const upgConfig = {
-            hacker: { name: "Младший Хакер", baseCost: 10, dps: 0.5 },
-            bot: { name: "Боевой Скрипт", baseCost: 50, dps: 3 }
-        };
-
-        window.addEventListener('load', () => {
-            const savedClan = localStorage.getItem('cyber_clan_id');
-            if (savedClan) document.getElementById('clan-id-input').value = savedClan;
-        });
-
-        document.getElementById('btn-create').addEventListener('click', async () => {
-            clanId = "clan_" + Math.floor(Math.random() * 8999 + 1000);
-            chatLogs = [{ sender: "Система", msg: `${myName} создал клан!` }];
-            
-            await supabaseClient.from('cyber_clans').insert([{ 
-                id: clanId, score: 0, upgrades: gameState.upgrades, chat_logs: chatLogs 
-            }]);
-
-            localStorage.setItem('cyber_clan_id', clanId);
-            startGame();
-        });
-
-        document.getElementById('btn-join').addEventListener('click', async () => {
-            const inputId = document.getElementById('clan-id-input').value.trim();
-            if(!inputId) return alert("Введите ID!");
-
-            const { data, error } = await supabaseClient.from('cyber_clans').select('*').eq('id', inputId).single();
-            if(error || !data) return alert("Клан не найден!");
-
-            clanId = inputId;
-            gameState.score = Number(data.score);
-            gameState.upgrades = data.upgrades || { hacker: 0, bot: 0 };
-            chatLogs = data.chat_logs || [];
-
-            localStorage.setItem('cyber_clan_id', clanId);
-            chatLogs.push({ sender: "Система", msg: `${myName} подключился!` });
-            
-            await saveToCloud();
-            startGame();
-        });
-
-        function startGame() {
-            document.getElementById('network-panel').style.display = 'none';
-            document.getElementById('game-interface').style.display = 'grid';
-            document.getElementById('clan-id-display').innerText = clanId;
-            
-            renderUpgrades();
-            renderChat();
-            
-            // Включаем пассивный доход локально
-            setInterval(localTick, 250);
-            // Каждые 5 секунд резервно пушим свой счет (без затирания)
-            setInterval(saveToCloud, 5000);
-
-            // ПОДКЛЮЧАЕМ НАСТОЯЩИЙ РЕАЛТАЙМ
-            supabaseClient
-                .channel('public:cyber_clans')
-                .on('postgres_changes', { event: 'UPDATE', filter: `id=eq.${clanId}`, schema: 'public', table: 'cyber_clans' }, payload => {
-                    const cloudData = payload.new;
-                    if (cloudData) {
-                        // Синхронизируем счет, только если в облаке он больше
-                        if (Number(cloudData.score) > gameState.score) {
-                            gameState.score = Number(cloudData.score);
-                        }
-                        // Обновляем чат, если прилетело новое сообщение от друга
-                        if (cloudData.chat_logs && cloudData.chat_logs.length !== chatLogs.length) {
-                            chatLogs = cloudData.chat_logs;
-                            renderChat();
-                        }
-                        gameState.upgrades = cloudData.upgrades || gameState.upgrades;
-                        updateUI();
-                    }
-                })
-                .subscribe();
+        // Работа с аккаунтом (сохраняется намертво в памяти устройства)
+        let myName = localStorage.getItem('chat_user_name');
+        if (!myName) {
+            myName = "NetRunner_" + Math.floor(Math.random() * 8999 + 1000);
+            localStorage.setItem('chat_user_name', myName);
         }
+        document.getElementById('profile-name').innerText = myName;
 
-        // Кнопка клика теперь просто увеличивает локальный счет (работает мгновенно)
-        document.getElementById('btn-farm').addEventListener('click', () => {
-            gameState.score += 1;
-            updateUI();
-        });
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
 
-        function localTick() {
-            let dps = 0;
-            for(let id in gameState.upgrades) {
-                dps += (gameState.upgrades[id] || 0) * upgConfig[id].dps;
-            }
-            gameState.score += dps * 0.25;
-            updateUI();
-        }
+        // 1. Загрузка истории сообщений при старте
+        async function loadHistory() {
+            const { data, error } = await supabase
+                .from('cyber_messages')
+                .select('*')
+                .order('id', { ascending: true })
+                .limit(50);
 
-        function updateUI() {
-            document.getElementById('res-data').innerText = Math.floor(gameState.score);
-            for(let id in upgConfig) {
-                const item = document.getElementById(`upg-${id}`);
-                if(item) {
-                    let count = gameState.upgrades[id] || 0;
-                    let cost = Math.floor(upgConfig[id].baseCost * Math.pow(1.4, count));
-                    item.querySelector('.count').innerText = count;
-                    item.querySelector('.cost').innerText = cost;
-                    item.querySelector('button').disabled = gameState.score < cost;
-                }
+            if (!error && data) {
+                data.forEach(msg => appendMessage(msg));
+                scrollToBottom();
             }
         }
 
-        function renderUpgrades() {
-            const container = document.getElementById('upgrades-list');
-            container.innerHTML = "";
-            for(let id in upgConfig) {
-                const div = document.createElement('div');
-                div.className = 'upg-item';
-                div.id = `upg-${id}`;
-                div.innerHTML = `
-                    <div><b>${upgConfig[id].name}</b> (<span class="count">0</span> шт.)</div>
-                    <button onclick="buyUpg('${id}')"><span class="cost">0</span> 💾</button>
-                `;
-                container.appendChild(div);
-            }
-            updateUI();
+        // 2. Функция добавления сообщения на экран
+        function appendMessage(msg) {
+            const isMe = msg.sender === myName;
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${isMe ? 'my-msg' : ''}`;
+            
+            // Форматируем время
+            const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            msgDiv.innerHTML = `
+                <div class="msg-meta">
+                    <b>${msg.sender}</b>
+                    <span>${time}</span>
+                </div>
+                <div class="msg-text">${msg.message}</div>
+            `;
+            chatBox.appendChild(msgDiv);
         }
 
-        window.buyUpg = async function(id) {
-            let count = gameState.upgrades[id] || 0;
-            let cost = Math.floor(upgConfig[id].baseCost * Math.pow(1.4, count));
-            if(gameState.score >= cost) {
-                gameState.score -= cost;
-                gameState.upgrades[id] = count + 1;
-                chatLogs.push({ sender: "Лог", msg: `${myName} нанял ${upgConfig[id].name}` });
-                updateUI();
-                renderUpgrades();
-                await saveToCloud();
+        function scrollToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // 3. Отправка сообщения в базу данных
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            messageInput.value = ""; // Сразу очищаем поле ввода для скорости
+
+            const { error } = await supabase
+                .from('cyber_messages')
+                .insert([{ sender: myName, message: text }]);
+
+            if (error) {
+                alert("Ошибка отправки: " + error.message);
             }
         }
 
-        document.getElementById('btn-send').addEventListener('click', async () => {
-            const inp = document.getElementById('chat-input');
-            if(!inp.value.trim()) return;
-            chatLogs.push({ sender: myName, msg: inp.value.trim() });
-            inp.value = "";
-            renderChat();
-            await saveToCloud();
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
 
-        function renderChat() {
-            const box = document.getElementById('chat-box');
-            box.innerHTML = "";
-            chatLogs.slice(-30).forEach(c => {
-                const d = document.createElement('div');
-                d.className = 'chat-msg';
-                d.innerHTML = `<b>[${c.sender}]:</b> ${c.msg}`;
-                box.appendChild(d);
-            });
-            box.scrollTop = box.scrollHeight;
-        }
+        // 4. НАСТОЯЩИЙ РЕАЛТАЙМ (Ловим новые сообщения из базы на лету)
+        supabase
+            .channel('global-chat')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cyber_messages' }, payload => {
+                appendMessage(payload.new);
+                scrollToBottom();
+            })
+            .subscribe();
 
-        async function saveToCloud() {
-            if(!clanId) return;
-            try {
-                await supabaseClient.from('cyber_clans').update({
-                    score: gameState.score,
-                    upgrades: gameState.upgrades,
-                    chat_logs: chatLogs,
-                    updated_at: new Date()
-                }).eq('id', clanId);
-            } catch(e) {}
-        }
+        // Запуск
+        loadHistory();
     </script>
 </body>
 </html>
