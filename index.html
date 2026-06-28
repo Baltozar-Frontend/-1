@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberMesh // Global Chat</title>
+    <title>CyberMesh // Global Chat & Presence</title>
     <style>
         :root {
             --bg: #0a0b10;
@@ -18,16 +18,19 @@
             display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;
         }
         .container {
-            display: flex; flex-direction: column; background: var(--panel);
+            display: grid; grid-template-columns: 1fr 220px; background: var(--panel);
             border: var(--border); border-radius: 12px; flex-grow: 1; overflow: hidden;
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.05);
         }
+        @media (max-width: 600px) { .container { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } .sidebar { border-left: none !important; border-top: var(--border); max-height: 120px; } }
+        
+        .main-chat { display: flex; flex-direction: column; overflow: hidden; }
         .header {
             padding: 15px; border-bottom: var(--border); background: rgba(0,0,0,0.2);
             display: flex; justify-content: space-between; align-items: center;
         }
-        h2 { margin: 0; color: var(--accent); text-transform: uppercase; font-size: 18px; letter-spacing: 1px; }
-        .user-tag { font-size: 12px; color: #626880; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; }
+        h2 { margin: 0; color: var(--accent); text-transform: uppercase; font-size: 16px; letter-spacing: 1px; }
+        .user-tag { font-size: 12px; color: #626880; }
         .user-tag b { color: var(--accent); }
 
         .chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
@@ -36,7 +39,8 @@
         .msg.my-msg { background: rgba(0, 255, 204, 0.05); border-color: rgba(0, 255, 204, 0.2); align-self: flex-end; }
         .msg-meta { font-size: 11px; color: #626880; margin-bottom: 4px; display: flex; gap: 8px; }
         .msg-meta b { color: var(--accent); }
-        .msg-text { font-size: 14px; line-height: 1.4; word-break: break-word; }
+        
+        .typing-indicator { padding: 5px 15px; font-size: 12px; color: var(--accent); font-style: italic; min-height: 18px; background: rgba(0,0,0,0.1); }
 
         .input-area { padding: 12px; border-top: var(--border); display: flex; gap: 8px; background: rgba(0,0,0,0.2); }
         input[type="text"] {
@@ -46,48 +50,65 @@
         input[type="text"]:focus { border-color: var(--accent); }
         button {
             background: linear-gradient(135deg, #00ffcc, #0099ff); border: none; color: #000;
-            padding: 0 20px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase; font-size: 13px;
+            padding: 0 20px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase;
         }
-        button:active { opacity: 0.8; }
+
+        /* Боковая панель списка онлайн */
+        .sidebar { background: rgba(0,0,0,0.15); border-left: var(--border); padding: 15px; display: flex; flex-direction: column; overflow-y: auto; }
+        .sidebar h3 { margin: 0 0 10px 0; font-size: 14px; color: #626880; text-transform: uppercase; }
+        .online-user { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 6px; }
+        .status-dot { width: 8px; height: 8px; background: #00ffcc; border-radius: 50%; box-shadow: 0 0 8px #00ffcc; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 
     <div class="container">
-        <div class="header">
-            <h2>🌐 CYBERMESH // GLOBAL CHAT</h2>
-            <div class="user-tag">Твой профиль: <b id="profile-name">...</b></div>
-        </div>
-
-        <div class="chat-box" id="chat-box">
+        <!-- Главная зона чата -->
+        <div class="main-chat">
+            <div class="header">
+                <h2>🌐 CYBERMESH // GLOBAL MESH</h2>
+                <div class="user-tag">Профиль: <b id="profile-name">...</b></div>
             </div>
 
-        <div class="input-area">
-            <input type="text" id="message-input" placeholder="Введите сообщение в сеть..." maxlength="250">
-            <button id="send-btn">Отправить</button>
+            <div class="chat-box" id="chat-box"></div>
+            
+            <!-- Статус печати -->
+            <div class="typing-indicator" id="typing-box"></div>
+
+            <div class="input-area">
+                <input type="text" id="message-input" placeholder="Введите сообщение в сеть..." maxlength="250">
+                <button id="send-btn">Отправить</button>
+            </div>
+        </div>
+
+        <!-- Панель онлайна -->
+        <div class="sidebar">
+            <h3>В сети (<span id="online-count">0</span>)</h3>
+            <div id="online-list"></div>
         </div>
     </div>
 
     <script>
-        // Подключение к твоей базе Supabase
         const SUPABASE_URL = "https://cbivrlziqtenfhrtxism.supabase.co";
         const SUPABASE_KEY = "sb_publishable_fe0ZmhwRL_K3vIVuvtZdtA_TdyUDOvm";
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Работа с аккаунтом (сохраняется намертво в памяти устройства)
-        let myName = localStorage.getItem('chat_user_name');
-        if (!myName) {
-            myName = "NetRunner_" + Math.floor(Math.random() * 8999 + 1000);
-            localStorage.setItem('chat_user_name', myName);
-        }
+        let myName = localStorage.getItem('chat_user_name') || "NetRunner_" + Math.floor(Math.random() * 8999 + 1000);
+        localStorage.setItem('chat_user_name', myName);
         document.getElementById('profile-name').innerText = myName;
 
         const chatBox = document.getElementById('chat-box');
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
+        const onlineList = document.getElementById('online-list');
+        const onlineCount = document.getElementById('online-count');
+        const typingBox = document.getElementById('typing-box');
 
-        // 1. Загрузка истории сообщений при старте
+        let typingUsers = new Set();
+        let typingTimeout = null;
+
+        // 1. Загрузка истории
         async function loadHistory() {
             const { data, error } = await supabase
                 .from('cyber_messages')
@@ -101,60 +122,106 @@
             }
         }
 
-        // 2. Функция добавления сообщения на экран
         function appendMessage(msg) {
             const isMe = msg.sender === myName;
             const msgDiv = document.createElement('div');
             msgDiv.className = `msg ${isMe ? 'my-msg' : ''}`;
-            
-            // Форматируем время
             const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
             msgDiv.innerHTML = `
-                <div class="msg-meta">
-                    <b>${msg.sender}</b>
-                    <span>${time}</span>
-                </div>
+                <div class="msg-meta"><b>${msg.sender}</b> <span>${time}</span></div>
                 <div class="msg-text">${msg.message}</div>
             `;
             chatBox.appendChild(msgDiv);
         }
 
-        function scrollToBottom() {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+        function scrollToBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
 
-        // 3. Отправка сообщения в базу данных
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text) return;
+            messageInput.value = "";
+            
+            // Прекращаем статус печати при отправке
+            sendTypingStatus(false);
 
-            messageInput.value = ""; // Сразу очищаем поле ввода для скорости
-
-            const { error } = await supabase
-                .from('cyber_messages')
-                .insert([{ sender: myName, message: text }]);
-
-            if (error) {
-                alert("Ошибка отправки: " + error.message);
-            }
+            await supabase.from('cyber_messages').insert([{ sender: myName, message: text }]);
         }
 
         sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+        // 2. Логика статуса «Печатает...»
+        function sendTypingStatus(isTyping) {
+            chatChannel.track({
+                user: myName,
+                is_typing: isTyping
+            });
+        }
+
+        messageInput.addEventListener('input', () => {
+            sendTypingStatus(true);
+            
+            // Если юзер перестал нажимать кнопки, через 2 секунды убираем статус «печатает»
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                sendTypingStatus(false);
+            }, 2000);
         });
 
-        // 4. НАСТОЯЩИЙ РЕАЛТАЙМ (Ловим новые сообщения из базы на лету)
-        supabase
-            .channel('global-chat')
+        // 3. ПОДКЛЮЧАЕМ ЕДИНЫЙ КАНАЛ ДЛЯ ЧАТА, ОНЛАЙНА И ПЕЧАТИ
+        const chatChannel = supabase.channel('global-chat', {
+            config: { presence: { key: myName } }
+        });
+
+        chatChannel
+            // Слушаем новые сообщения
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cyber_messages' }, payload => {
                 appendMessage(payload.new);
                 scrollToBottom();
             })
-            .subscribe();
+            // Слушаем изменения списка онлайн и статусов печати
+            .on('presence', { event: 'sync' }, () => {
+                const state = chatChannel.presenceState();
+                
+                onlineList.innerHTML = "";
+                typingUsers.clear();
 
-        // Запуск
+                let count = 0;
+
+                for (const id in state) {
+                    count++;
+                    const userPresence = state[id][0];
+                    
+                    // Рендерим юзера в список онлайн
+                    const uDiv = document.createElement('div');
+                    uDiv.className = 'online-user';
+                    uDiv.innerHTML = `<div class="status-dot"></div> <span>${id}</span>`;
+                    onlineList.appendChild(uDiv);
+
+                    // Проверяем, печатает ли этот юзер (и что это не мы сами)
+                    if (userPresence.is_typing && id !== myName) {
+                        typingUsers.add(id);
+                    }
+                }
+
+                onlineCount.innerText = count;
+
+                // Выводим, кто печатает
+                if (typingUsers.size > 0) {
+                    const list = Array.from(typingUsers).join(', ');
+                    typingBox.innerText = `${list} набирает сообщение...`;
+                } else {
+                    typingBox.innerText = "";
+                }
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    // Как только подключились — заявляем базе, что мы тут (онлайн)
+                    await chatChannel.track({ user: myName, is_typing: false });
+                }
+            });
+
         loadHistory();
     </script>
 </body>
